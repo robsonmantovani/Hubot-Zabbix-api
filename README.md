@@ -1,4 +1,4 @@
-Hubot Zabbix script that let's you:
+# Hubot Zabbix script that let's you:
  - create maintenance period for an host or group of hosts
 - acknowledge events
 
@@ -24,7 +24,8 @@ in secrets.json, add a username and password with api permissions:
 }
 
 
-Commands:
+#Commands:
+
 hubot pause me group pao - create a maintenance period of 1 hour for host group PAO
 
 hubot pause me host paoad1 for 6 hours -  create a maintenance period of 6 hours for paoad1 host
