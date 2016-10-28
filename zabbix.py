@@ -13,10 +13,10 @@ import time
 
 
 # Zabbix api fqdn
-api = "https://zabbixapi.yelpcorp.com/api_jsonrpc.php"
+api = "<<zabbix server fdqdn>>/api_jsonrpc.php"
 
 # Credential file to connect to Zabbix api. File managed by puppet.
-secrets = open('/nail/etc/marley/zabbix.json').read()
+secrets = open('secrets.json').read()
 headers = {
   'content-type': "application/json-rpc",
   'cache-control': "no-cache",
