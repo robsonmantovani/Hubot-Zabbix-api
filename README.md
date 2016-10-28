@@ -4,6 +4,26 @@ Hubot Zabbix script that let's you:
 
  works with Zabbix 2.4
 
+#configuration
+
+in zabbix.py, add your zabbix server's fqdn:
+
+  api = "https://<<zabbixserver_fqdn>>/api_jsonrpc.php"
+  
+in secrets.json, add a username and password with api permissions:
+
+{
+    "jsonrpc": "2.0",
+    "method": "user.login",
+    "params": {
+        "user": "<username>",
+        "password": "<password>"
+    },
+    "id": 1,
+    "auth": null
+}
+
+
 Commands:
 hubot pause me group pao - create a maintenance period of 1 hour for host group PAO
 
