@@ -1,26 +1,25 @@
 #!/usr/bin/env python
 
 # Description:
-#   Uses Zabbix 2.4 api to :
-#  - create maintenance period for host or group of hosts
+#   Uses Zabbix api to :
+#  - create maintenance period for host or group of hosts (site code only for now e.g sfo sfo2 iad)
 #  - acknowledge events
 
 import argparse
 import json
-import requests
 import re
+import requests
 import time
 
 
 # Zabbix api fqdn
-api = "https://<<zabbix server>>/api_jsonrpc.php"
+api = "https://zabbixapi.yelpcorp.com/api_jsonrpc.php"
 
 # Credential file to connect to Zabbix api. File managed by puppet.
-secrets = open('<<file path>>secrets.json').read()
+secrets = open('/nail/etc/marley/zabbix.json').read()
 headers = {
   'content-type': "application/json-rpc",
   'cache-control': "no-cache",
-  'postman-token': "561fd14a-0622-1d41-4c60-d7582b740e5e"
   }
 
 
@@ -28,9 +27,8 @@ headers = {
 def get_token(creds):
   try:
     response = requests.request("POST", api, data=creds, headers=headers)
-  except requests.exceptions.RequestException as e:
-    print e
-    sys.exit(1)
+  except:
+    raise Exception ('problem getting a token')
   else:
     try:
       return json.loads(response.text)
@@ -69,7 +67,7 @@ def apicall(method, params, response, exception=''):
 
     token = get_token(secrets)
 
-    response_options = ['maintenanceid', 'name', 'hostid', 'groupid']
+    response_options = ['maintenanceid', 'name', 'hostid', 'groupid', 'name']
 
     data = {
             'jsonrpc': '2.0',
@@ -93,7 +91,7 @@ def apicall(method, params, response, exception=''):
             else:
                 return response
         except:
-            raise Exception(exception)
+            print Exception(exception)
 
 
 class Maintenance(object):
@@ -114,25 +112,28 @@ class Maintenance(object):
         exception = 'No maintenance for group: ' + group
         return apicall(method, params, 'maintenanceid', exception)
 
-    @staticmethod
-    def get_maintenance_name(host_group):
-        if re.search(r'group:', host_group):
+    def get_maintenance_name(self):
+        if self.args.group:
             group_type = 'groupids'
-            hostid = get_group_id(host_group)
-        else:
+            hostid = get_group_id(self.args.group)
+        elif self.args.host:
             group_type = 'hostids'
-            hostid = get_host_id(host_group)
+            hostid = get_host_id(self.args.host)
+        else:
+            Exception('Please provide either a group or a host name')
 
         method = 'maintenance.get'
         params = {
                 'output': 'extend',
-                'selectHosts': 'extend',
                 'selecttimeperiods': 'extend',
                 group_type: hostid
                 }
-        response = 'maintenance_name'
-        exception = 'No maintenance for host: ' + host_group
-        return apicall(method, params, response, exception)
+        response = 'name'
+        exception = 'No maintenance'
+        if hostid:
+            return apicall(method, params, response, exception)
+        else:
+            raise Exception('Enter a valid host or group name')
 
     @staticmethod
     def get_maintenance_host_id(host):
@@ -147,14 +148,14 @@ class Maintenance(object):
         return apicall(method, params, 'maintenanceid', exception)
 
     def del_maintenance(self):
-        if self.args.group:
+        if self.args.group and re.search(r'pause_', self.get_maintenance_name()):
             mid = self.get_maintenance_group_id(self.args.group)
             hostgroup = self.args.group
-        elif self.args.host:
+        elif self.args.host and re.search(r'pause_', self.get_maintenance_name()):
             mid = self.get_maintenance_host_id(self.args.host)
             hostgroup = self.args.host
         else:
-            raise Exception('please provide a host name or a group name')
+            raise Exception('No maintenance found to delete')
         method = 'maintenance.delete'
         params = [mid]
         response = 'maintenance for ' + hostgroup + ' was deleted successfully'
@@ -191,7 +192,10 @@ class Maintenance(object):
                 ],
             }
         response = 'Zabbix monitoring was paused for ' + str(howlong) + ' hour(s) on ' + str(self.args.host)
-        return apicall(method, params, response)
+        if hostid is None:
+          return 'please provide a valid host name'
+        else:
+          return apicall(method, params, response)
 
     def start_maintenance_group(self):
         if self.args.group:
@@ -225,7 +229,10 @@ class Maintenance(object):
                 ],
             }
         response = 'Zabbix monitoring was paused for ' + str(howlong) + ' hour(s) on ' + str(self.args.group)
-        return apicall(method, params, response)
+        if groupid is None:
+          return 'please provide a valid group name'
+        else:
+          return apicall(method, params, response)
 
 
 def eventid(args):
@@ -244,17 +251,21 @@ def acknowledge(args):
     if args.m:
         message = args.m
     else:
-        message = ""
+        message = 'no comment added'
+    if args.username:
+        username = args.username
+    else:
+        username = 'no username available'
     method = 'event.acknowledge'
     params = {
         'eventids': args.ack,
-        'message': message
+        'message': username + ': ' + message
         }
     response = 'alert ' + str(args.ack) + ' has been acked sucessfully.'
     return apicall(method, params, response)
 
 
-def argument_check(args):
+def arguments_to_functions(args):
     pause = Maintenance(args)
     if args.pause:
         if args.host and args.hours:
@@ -267,6 +278,8 @@ def argument_check(args):
         print(acknowledge(args))
     elif args.trigger:
         print(eventid(args))
+    elif args.maintenancename:
+        print(pause.get_maintenance_name())
     else:
         raise Exception('please select an host or a group and a time during')
 
@@ -283,6 +296,7 @@ def main():
     arg_caption_ack = 'Eventid to ack'
     arg_caption_m = 'ack comment'
     arg_caption_username = 'username'
+    arg_caption_maintenancename = 'return the maintenance name'
 
     parser = argparse.ArgumentParser(description=app_caption)
     parser.add_argument('--pause', action='store_true',
@@ -303,10 +317,12 @@ def main():
                         help=arg_caption_m)
     parser.add_argument('--username', type=str,
                         help=arg_caption_username)
+    parser.add_argument('--maintenancename', action='store_true',
+                        help=arg_caption_maintenancename)
 
 
     args = parser.parse_args()
-    argument_check(args)
+    arguments_to_functions(args)
 
 if __name__ == '__main__':
     main()
