@@ -1,17 +1,22 @@
 # Hubot Zabbix script that let's you:
- - create maintenance period for an host or group of hosts
+- create maintenance period for an host or group of hosts
 - acknowledge events
 
- works with Zabbix 2.4
+ ### Works with 
+ 
+ * Zabbix 2.4
 
-#configuration
+### Configuration
 
-in zabbix.py, add your zabbix server's fqdn:
+In *zabbix.py*, add your zabbix server's fqdn:
 
-  api = "https://<<zabbixserver_fqdn>>/api_jsonrpc.php"
-  
-in secrets.json, add a username and password with api permissions:
+```py
+api = "https://<<zabbixserver_fqdn>>/api_jsonrpc.php"
+```
 
+Copy `secrets.json.example` to `secrets.json`, add a username and password with api permissions:
+
+```json
 {
     "jsonrpc": "2.0",
     "method": "user.login",
@@ -22,17 +27,21 @@ in secrets.json, add a username and password with api permissions:
     "id": 1,
     "auth": null
 }
+```
 
+### Hubot Commands:
 
-#Commands:
+* To  create a maintenance period of 1 hour for host group PAO:
+`hubot pause me group pao`
 
-hubot pause me group pao - create a maintenance period of 1 hour for host group PAO
+* To create a maintenance period of 6 hours for paoad1 host:
+`hubot pause me host paoad1 for 6 hours`
 
-hubot pause me host paoad1 for 6 hours -  create a maintenance period of 6 hours for paoad1 host
+* To delete maintenance for group pao:
+`hubot unpause me group pao`
 
-hubot unpause me group pao - delete maintenance for group pao
+* To delete maintenance for host paoad1:
+`hubot unpause me host paoad1`
 
-hubot unpause me host paoad1 - delete maintenance for host paoad1
-
-hubot zaback 9376146 pb resolved - Acknowledge eventid 9376146 and add comment: "pb resolved"
-
+*  Acknowledge eventid 9376146 and add comment: "pb resolved": 
+`hubot zaback 9376146 pb resolved`
